@@ -1,0 +1,346 @@
+import traceback
+from math import *
+
+def showMatrix(mat):
+    "Print out matrix"
+    for row in mat:
+        print(row)
+
+def copyVec(V):
+    ##return a copy of V
+    C=[k for k in V]
+    return(C)
+    
+def rows(mat):
+    "return number of rows"
+    return(len(mat))
+    
+def cols(mat):
+    "return number of cols"
+    return(len(mat[0]))
+    
+def getRow(mat, row):
+    ##return row row from matrix mat
+    R=[]
+    for i in range(cols(mat)):
+	R.append(mat[row][i])
+    return(R)
+    
+def getRowA(mat,row):
+	##return row from augmented matrix without bth element
+	R=[]
+	for i in range(cols(mat)-1):
+		R.append(mat[row][i])
+	return(R)
+
+def getCol(mat, col):
+	##return column col from matrix mat
+	R=[]
+	for i in range(rows(mat)):
+		R.append(mat[i][col])
+	return(R)
+
+def subVec(S,T):
+	print "b:",S,"Ax:",T
+	if (len(list(S)) != len(list(T))): 
+		print "vector lengths of ",S," and ",T,"do not match."
+		traceback.print_stack()
+		return()
+	R=[]
+	for j in range(len(T)):
+		R.append(S[j]-T[j])
+	return(R)
+
+def dot(S,T):
+	if (len(S) != len(T)):
+		print "vector lengths of ",S,"and ",T,"do not match."
+		traceback.print_stack()
+		return()
+	R=0
+	for j in range(len(T)):
+		R+=(T[j]*S[j])
+	return(R)
+
+def matDot(V,M):
+	R=[]
+	if (len(V) != len(getRow(M,0))):
+		print "lengths of vector",V,"and matrix row",getRow(M,0),"Do not match."
+		traceback.print_stack()
+		return()
+	for i in range(len(V)):
+		R.append(dot(V,getRow(M,i)))
+	return(R)
+	
+def scalarMult(s,V):
+	##return vector V multiplied by scalar s
+    R=[] 
+    for j in range(len(V)):
+	R.append(V[j]*s)
+    return(R)    
+	
+def absMaxIndex(V):
+	maxabs=0
+	for i in range(len(V)):
+		if (abs(V[i]) > maxabs):
+			maxabs=abs(V[i])
+			max=V[i]
+	return(i)
+		
+def absmax(V):
+	maxabs=0
+	for i in range(len(V)):
+		if (abs(V[i]) > maxabs):
+			maxabs=abs(V[i])
+			max=V[i]
+	return(maxabs)
+
+def multiplyMat(mat1,mat2):
+	"multiply two matrices"
+	R=[]
+	V=[]
+	for i in range(rows(mat1)):
+		V=[]
+		for j in range(cols(mat2)):
+			V.append(dot(getRow(mat1,i),getCol(mat2,j)))
+		R.append(V)
+	
+	return(R)
+
+def addVectors(S,T):
+	##return sum of vectors S and T
+    R=[]
+    for j in range(len(T)):
+	    R.append(T[j]+S[j])
+    return(R)
+
+def findNaivePivot(mat, colnum):
+	##return row# of first non-zero pivot in matrix mat,
+	##starting col# of columns in
+	col=getCol(mat, colnum)
+	for i in range(colnum,rows(mat)):
+		if (col[i] != 0):
+			return(i)
+		else: findNaivePivot(mat, colnum+1)
+
+def findPartialPivot(mat, colnum):
+##same as naive, but finds max pivot
+	col=getCol(mat, colnum)
+	subcol=col[colnum:]
+	print "subcol:", subcol
+	for i in range(len(col)):
+		if (i==absMaxIndex(col[i:])): 
+			return(i)
+
+def findScaledPartialPivot(mat, rownum):
+	row=getRow(mat, rownum)
+	subrow=row[0:rownum+1]
+	print "subrow:", subrow
+	if (absmax(row) != 0):
+		ratio=float(absmax(subrow))/float(absmax(row))
+		print "original ratio:", absmax(subrow) ,"/",absmax(row)
+		for i in range(rownum+1,rows(mat)):
+			row=getRow(mat, i)
+			subrow=row[0:i+1]
+			print "second ratio:", absmax(subrow), "/", absmax(row)
+			if (absmax(row) != 0 and ratio<float(absmax(subrow))/float(absmax(row))):
+				return(i)
+	return(rownum)
+				
+		
+def rowInterchange(mat, row1, row2):
+##makes copies and inserts and deletes, effectively row swapping
+	row1c=copyVec(getRow(mat,row1))
+	mat.insert(row1, getRow(mat, row2))
+	mat.pop(row1+1)
+	mat.insert(row2,row1c)
+	mat.pop(row2+1)
+	return(mat)
+	
+def zeroCol(mat, row, col):
+##zeroes col, with some debugging code (print statements)
+	prow=getRow(mat, row)
+	p=prow[col]
+	#print "pivot:", p
+	for i in range(row+1, rows(mat)):
+		if (mat[i][col] != 0):
+			multiplier=-1.0*mat[i][col]/p
+			#print "element below_pivot:",mat[i][col]
+			new_irow=addVectors(scalarMult(multiplier, prow), mat[i])
+			#print "multiplier:",multiplier
+			#print "new linear combination of:",multiplier,"*(Row",row,")+ Row",i,"="
+			#print  multiplier,"*",prow
+			#print "+",mat[i]
+			#print new_irow
+			mat.insert(i,new_irow)
+			mat.pop(i+1)
+			#print "new matrix:"
+			#showMatrix(mat)
+	return(mat)
+		
+def naiveGaussian(mat):
+	print "Naive Gaussian Elimination of matrix:"
+	print "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+	#showMatrix(mat)
+	for i in range(rows(mat)):
+		p=findNaivePivot(mat,i)
+		if (p != i):
+			mat = rowInterchange(mat, p, i)
+		mat = zeroCol(mat, i, i)
+	return(mat)
+		
+def partialGaussian(mat):
+	print "Partial Gaussian Elimination of matrix:"
+	showMatrix(mat)
+	print "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+	for i in range(rows(mat)-1):
+		p=findPartialPivot(mat,i)
+		print "matrix before interchange:\n",showMatrix(mat)
+		if (p != i and p != None and i != None):
+			mat = rowInterchange(mat, p, i)
+			print "matrix after interchange:\n",showMatrix(mat)	
+		else: print "No row interchange required."
+		mat = zeroCol(mat, i, i)
+	return(mat)
+	
+def scaledPartialGaussian(mat):
+	print "Partially Scaled Gaussian Elimination of matrix:"
+	showMatrix(mat)
+	print "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+	for i in range(rows(mat)):
+		p=findScaledPartialPivot(mat,i)
+		if (p != i ):
+			mat = rowInterchange(mat, p, i)
+			print("matrix after row interchange:")
+			showMatrix(mat)
+		mat = zeroCol(mat, i, i)
+	return(mat)
+
+
+    
+'''Functions provided by Professor''' 
+'''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~''' 
+def hilbert_b(n):
+    # creates "Hilbert" b vector
+    b_vec = [0 for k in range(n)]
+    b_vec[0] = 2/pi
+    b_vec[1] = 1/pi
+    for k in range(2,n):
+        b_vec[k] = 1/pi -(k*(k-1)/pi**2)*b_vec[k-2]
+    return(b_vec)
+
+def hilbert(n):
+    # creates a Hilbert matrix
+    h_n = [[0 for j in range(n)] for i in range(n)]
+    for row in range(n):
+        for col in range(n):
+            h_n[col][row] = 1.0/(1.0+row+col)
+    return(h_n)
+    
+def backSub(M):
+    """
+    given a row reduced augmented matrix with nonzero 
+    diagonal entries, returns a solution vector
+    
+    """
+    cs = cols(M)-1 # cols not counting augmented col
+    sol = [0 for i in range(cs)] # place for solution vector
+    for i in range(1,cs+1):
+        row = cs-i # work backwards
+        sol[row] = ((M[row][cs] - sum([M[row][j]*sol[j] for
+                    j in range(row+1,cs)])) / M[row][row]) 
+    return(sol)
+    
+def augment(mat,vec):
+    "given nxn mat and n length vector return augmented matrix"
+    amat = []
+    for row in range(rows(mat)):
+        amat.append(mat[row]+[vec[row]])
+    return(amat)
+
+'''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~''' 
+
+def initIdentityMatrix(n):
+	imat = [[0 for j in range(n)] for i in range(n)]
+	for i in range(n):
+		imat[i][i]=1
+	return(imat)
+	
+def LUfactorization(mat):
+	##init identity matrix to be same size as mat
+	L=initIdentityMatrix(rows(mat))
+	##U shall be initialized as a copy of mat
+	U=list(mat)
+	##begin nge
+	for i in range(rows(U)):
+		piv=findNaivePivot(U,i)
+		##no row interchanges allowed during LU decomposition
+		row=piv
+		col=i
+		prow=getRow(U, row)
+		p=prow[col]
+		for j in range(row+1, rows(U)):
+			if (U[j][col] != 0):
+				new_irow=addVectors(scalarMult(-1.0*U[j][col]/p, prow), U[j])
+				##put multiplier in appropriate L index
+				L[j][col]=U[j][col]/p
+				U.insert(j,new_irow)
+				U.pop(j+1)
+	print("L:\n")
+	showMatrix(L)
+	print("\nU:\n")
+	showMatrix(U)
+	return(L,U)
+
+def residualVector(A,x,b):
+	print "b-Ax="
+	print(subVec(b,matDot(x,A)))
+	return(subVec(b,matDot(x,A)))
+
+mat10 =  [
+		[10,	10,		10,		10**17],
+		[1,	10**-3,	10**-3,	10**-3],
+		[1,	1,		10**-3,	10**-3],
+		[1,	1,		1,		10**-3]
+		]
+		
+mat10A= [
+		[10,	10,		10,		10**17,	10**17	],
+		[1,	10**-3,	10**-3,	10**-3,	1		],
+		[1,	1,		10**-3,	10**-3,	2		],
+		[1,	1,		1,		10**-3,	3		]
+		]
+
+matA = 	[
+		[2.11, -4.21, 0.92, 2.01],
+		[4.01,10.2,-1.12, -3.09],
+		[1.09,.987,.832,4.21]
+		]
+mat =	[
+		[2.11, -4.21, 0.92],
+		[4.01,10.2,-1.12],
+		[1.09,.987,.832]
+		]	
+
+b=[10**17,1,2,3]
+
+'''
+print(residualVector
+(		
+	hilbert(25),
+	backSub
+	(
+		naiveGaussian
+		(
+			augment
+			(
+				hilbert(25), 
+				hilbert_b(25)
+			)
+		)
+	)	
+	,hilbert_b(25)
+))
+'''
+print backSub(naiveGaussian(matA))
+#print backSub(naiveGaussian(augment(hilbert(25),hilbert_b(25))))
+
